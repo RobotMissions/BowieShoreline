@@ -14,6 +14,8 @@ void MiniBowieShoreline::setRobotID(uint8_t the_robot_id) {
 
 void MiniBowieShoreline::begin() {
 
+  Serial << "Bowie is getting started......." << endl;
+
   // Instance of the class for the callbacks from Promulgate
   bowieInstance = this;
   ROBOT_ID = 3;
@@ -149,6 +151,8 @@ void MiniBowieShoreline::begin() {
 
   bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
   
+  Serial << "Bowie is ready" << endl;
+
 }
 
 
@@ -312,7 +316,8 @@ void MiniBowieShoreline::update(bool force_no_sleep) {
 
   // comms
   bowiecomms_xbee.updateComms();
-  bowiecomms_arduino.updateComms();
+  // Uncomment below line if you will be using the Arduino comms
+  //bowiecomms_arduino.updateComms();
 
   // specific things to do if remote operation is enabled
   if(REMOTE_OP_ENABLED) {
@@ -327,8 +332,11 @@ void MiniBowieShoreline::update(bool force_no_sleep) {
         bowiedrive.motor_setSpeed(1, 0);
         if(!servos_deactivated_over_current) {
           bowielights.dimLights();
-          bowiearm.parkArm();
-          bowiescoop.parkEnd();
+          // uncomment the below two lines if you want to have the robot
+          // save power when idle by always moving the arm back into its
+          // parked position
+          //bowiearm.parkArm();
+          //bowiescoop.parkEnd();
           bowiehopper.parkHopper();
           bowiehopper.parkLid();
         }
@@ -338,11 +346,15 @@ void MiniBowieShoreline::update(bool force_no_sleep) {
   }
 
   // sensors
-  servoCurrent.updateCurrentSensor();
-  motorCurrent.updateCurrentSensor();
+  // TODO - this is disabled temporarily as it interferes with
+  // the communication latency (for some reason...)
+  // it causes sproadic 5000ms delays
+  //servoCurrent.updateCurrentSensor();
+  //motorCurrent.updateCurrentSensor();
 
   // periodic
   if(current_time-last_update_periodic >= 1000) {
+    Serial << "~" << endl;
     updatePeriodicMessages();
     last_update_periodic = current_time;
   }
@@ -575,12 +587,10 @@ void MiniBowieShoreline::processServoInterrupt(int key, int val) {
     case SERVO_ARM_KEY:
     break;
     case SERVO_END_KEY:
-      Serial << "End" << endl;
     break;
     case SERVO_HOPPER_KEY:
     break;
     case SERVO_LID_KEY:
-      Serial << "Lid" << endl;
     break;
     case SERVO_EXTRA_KEY:
     break;

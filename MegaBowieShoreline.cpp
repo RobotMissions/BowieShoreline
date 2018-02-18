@@ -350,8 +350,11 @@ void MegaBowieShoreline::update(bool force_no_sleep) {
   }
 
   // sensors
-  servoCurrent.updateCurrentSensor();
-  motorCurrent.updateCurrentSensor();
+  // TODO - this is disabled temporarily as it interferes with
+  // the communication latency (for some reason...)
+  // it causes sproadic 5000ms delays
+  //servoCurrent.updateCurrentSensor();
+  //motorCurrent.updateCurrentSensor();
 
   // log
   updateLogSensorData();
@@ -471,10 +474,11 @@ void MegaBowieShoreline::control(Msg m) {
 
     if(packets[0].cmd == 'L' && packets[0].key == 1 && packets[1].cmd == 'R' && packets[1].key == 0) {
       // turning right
-      bowielights.setLight(0, MIN_BRIGHTNESS);
-      bowielights.setLight(1, MAX_BRIGHTNESS);
-      bowielights.setLight(2, MIN_BRIGHTNESS);
-      bowielights.setLight(3, MAX_BRIGHTNESS);
+      bowielights.setLight(1, MIN_BRIGHTNESS);
+      bowielights.setLight(3, MIN_BRIGHTNESS);
+      
+      bowielights.setLight(0, MAX_BRIGHTNESS);
+      bowielights.setLight(2, MAX_BRIGHTNESS);
 
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(false);
@@ -487,10 +491,11 @@ void MegaBowieShoreline::control(Msg m) {
       return; // we don't want the default stuff below when turning
     } else if(packets[0].cmd == 'L' && packets[0].key == 0 && packets[1].cmd == 'R' && packets[1].key == 1) {
       // turning left
-      bowielights.setLight(0, MAX_BRIGHTNESS);
-      bowielights.setLight(1, MIN_BRIGHTNESS);
-      bowielights.setLight(2, MAX_BRIGHTNESS);
-      bowielights.setLight(3, MIN_BRIGHTNESS);
+      bowielights.setLight(0, MIN_BRIGHTNESS);
+      bowielights.setLight(2, MIN_BRIGHTNESS);
+      
+      bowielights.setLight(1, MAX_BRIGHTNESS);
+      bowielights.setLight(3, MAX_BRIGHTNESS);
 
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(true);
@@ -521,14 +526,22 @@ void MegaBowieShoreline::control(Msg m) {
       if(packets[i].cmd == 'L') { // left motor
         if(packets[i].val > 255) packets[i].key = 99; // something weird here, set key to skip
         if(packets[i].key == 1) { // fwd
-          bowielights.setLight(0, packets[i].val);
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(0, packets[i].val);  
+          } else {
+            bowielights.setLight(0, MIN_BRIGHTNESS);
+          }
           bowielights.setLight(2, MIN_BRIGHTNESS);
           //leftBork();
           bowiedrive.motor_setDir(0, MOTOR_DIR_FWD);
           bowiedrive.motor_setSpeed(0, packets[i].val);
         } else if(packets[i].key == 0) { // bwd
           bowielights.setLight(0, MIN_BRIGHTNESS);
-          bowielights.setLight(2, packets[i].val);
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(2, packets[i].val);  
+          } else {
+            bowielights.setLight(2, MIN_BRIGHTNESS);
+          }
           //leftBork();
           bowiedrive.motor_setDir(0, MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(0, packets[i].val);
@@ -538,14 +551,23 @@ void MegaBowieShoreline::control(Msg m) {
       if(packets[i].cmd == 'R') { // right motor
         if(packets[i].val > 255) packets[i].key = 99; // something weird here, set key to skip
         if(packets[i].key == 1) { // fwd
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(1, packets[i].val);  
+          } else {
+            bowielights.setLight(1, MIN_BRIGHTNESS);
+          }
           bowielights.setLight(1, packets[i].val);
           bowielights.setLight(3, MIN_BRIGHTNESS);
           //leftBork();
           bowiedrive.motor_setDir(1, MOTOR_DIR_FWD);
           bowiedrive.motor_setSpeed(1, packets[i].val);
         } else if(packets[i].key == 0) { // bwd
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(3, packets[i].val);  
+          } else {
+            bowielights.setLight(3, MIN_BRIGHTNESS);
+          }
           bowielights.setLight(1, MIN_BRIGHTNESS);
-          bowielights.setLight(3, packets[i].val);
           //leftBork();
           bowiedrive.motor_setDir(1, MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(1, packets[i].val);
@@ -603,12 +625,10 @@ void MegaBowieShoreline::processServoInterrupt(int key, int val) {
     case SERVO_ARM_KEY:
     break;
     case SERVO_END_KEY:
-      Serial << "End" << endl;
     break;
     case SERVO_HOPPER_KEY:
     break;
     case SERVO_LID_KEY:
-      Serial << "Lid" << endl;
     break;
     case SERVO_EXTRA_KEY:
     break;
