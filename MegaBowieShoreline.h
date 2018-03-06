@@ -199,6 +199,9 @@ class MegaBowieShoreline {
     void begin();
     uint8_t ROBOT_ID;
 
+    // Callbacks
+    void set_control_callback( void (*controlCallback)(Msg m) );
+
     // Components
     BowieArm bowiearm;
     BowieCurrentSensor servoCurrent;
@@ -213,6 +216,7 @@ class MegaBowieShoreline {
 
     // Control
     void update(bool force_no_sleep);
+    static void received_action(Msg m);
     void control(Msg m);
     static void servoInterrupt(int key, int val);
     bool performing_large_action;
@@ -224,9 +228,12 @@ class MegaBowieShoreline {
     void disableLogging();
     void enableOverCurrentProtection();
     void disableOverCurrentProtection();
+    void enableDefaultActions();
+    void disableDefaultActions();
 
     // Movements
     void scoopSequence(int frame_delay);
+    void emptyScoop();
     void deposit();
     void moveArmAndEnd(int armPos, int step, int del, int armMin, int armMax, int endMin, int endMax);
     int clawParallelVal(int arm_Val);
@@ -234,11 +241,15 @@ class MegaBowieShoreline {
 
   private:
 
+    // Callbacks
+    void (*_controlCallback)(Msg m);
+
     // States
     bool REMOTE_OP_ENABLED; // true by default
     bool PREVENT_OVER_CURRENT; // false by default (advanced functionality)
     bool LOGGING_ENABLED; // true by default
     bool TURN_SEQUENCE_MODE; // true by default
+    bool DEFAULT_ACTIONS; // true by default
 
     // Other
     uint8_t unlikely_count;
@@ -291,6 +302,16 @@ class MegaBowieShoreline {
 
     // Specific
     void buzz(long frequency, long length);
+
+    // Arm Control
+    long last_arm_control_cmd;
+    bool prev_target_heading;
+    bool target_heading;
+    bool new_heading;
+    bool update_target;
+    bool updating_arm;
+    uint16_t target_arm_pos;
+    void armOperatorControl();
 
 };
 

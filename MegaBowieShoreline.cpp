@@ -14,6 +14,8 @@ void MegaBowieShoreline::setRobotID(uint8_t the_robot_id) {
 
 void MegaBowieShoreline::begin() {
 
+  Serial << "Bowie is getting started......." << endl;
+
   // Instance of the class for the callbacks from Promulgate
   bowieInstance = this;
   ROBOT_ID = 3;
@@ -24,6 +26,7 @@ void MegaBowieShoreline::begin() {
   PREVENT_OVER_CURRENT = false;
   LOGGING_ENABLED = true;
   TURN_SEQUENCE_MODE = true;
+  DEFAULT_ACTIONS = true;
 
   unlikely_count = 0;
   current_time = 0;
@@ -158,6 +161,12 @@ void MegaBowieShoreline::begin() {
 
   bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
   
+  Serial << "Bowie is ready" << endl;
+
+}
+
+void MegaBowieShoreline::set_control_callback( void (*controlCallback)(Msg m) ) {
+  _controlCallback = controlCallback;
 }
 
 
@@ -189,6 +198,14 @@ void MegaBowieShoreline::enableOverCurrentProtection() {
 
 void MegaBowieShoreline::disableOverCurrentProtection() {
   PREVENT_OVER_CURRENT = false;
+}
+
+void MegaBowieShoreline::enableDefaultActions() {
+  DEFAULT_ACTIONS = true;
+}
+
+void MegaBowieShoreline::disableDefaultActions() {
+  DEFAULT_ACTIONS = false;
 }
 
 
@@ -321,6 +338,7 @@ void MegaBowieShoreline::update(bool force_no_sleep) {
 
   // comms
   bowiecomms_xbee.updateComms();
+  /*
   bowiecomms_arduino.updateComms();
 
   // specific things to do if remote operation is enabled
@@ -362,16 +380,23 @@ void MegaBowieShoreline::update(bool force_no_sleep) {
 
   // periodic
   if(current_time-last_update_periodic >= 1000) {
+    Serial << "~";
     updatePeriodicMessages();
     last_update_periodic = current_time;
   }
+  */
 
+  // arm control
+  armOperatorControl();
+
+}
+
+void MegaBowieShoreline::received_action(Msg m) {
+  bowieInstance->control(m);
 }
 
 void MegaBowieShoreline::control(Msg m) {
 
-  if(BOT_DEBUG_MEGA) Serial << "Control! WOOOOT" << endl;
-  
   last_ctrl = millis();
 
   Packet packets[2] = { m.pck1, m.pck2 };
@@ -381,105 +406,14 @@ void MegaBowieShoreline::control(Msg m) {
     Serial << "*c2 cmd: " << packets[1].cmd << " key: " << packets[1].key << " val: " << packets[1].val << endl;
   }
 
-  // we've seen this happen *sometimes*, and it is highly unlikely that this would be an
-  // intentional command. let's make sure they mean this at least 2 times before listening
-  if(m.pck1.val == 255 && m.pck2.val == 255 && m.pck1.cmd == 'L' && m.pck2.cmd == 'R') {
-    unlikely_count++;
-    if(unlikely_count <= 2) return;
-  } else {
-    unlikely_count = 0;
-  }
-
-  if(m.action == '#') {
-
-    for(int i=0; i<2; i++) {
-
-      if(packets[i].cmd == 'P') { // red button
-        if(packets[i].val == 1) { // sends drive joystick cmds on operator side
-        }
-      }
-
-      if(packets[i].cmd == 'Y') { // yellow button
-        if(packets[i].val == 1) { // sends arm joystick cmds on operator side
-        }
-      }
-
-      if(packets[i].cmd == 'G') { // green button - dump
-        if(packets[i].val == 1) {
-
-          if(servos_deactivated_over_current) return; // over current protection
-
-          if(performing_large_action) return; // don't do this action if we're already doing one
-
-          performing_large_action = true;
-          bool was_lid_parked = bowiehopper.getLidParked();
-          if(was_lid_parked) bowiehopper.unparkLid();
-          bowiehopper.moveLid(LID_MIN, 5, 1); // open lid
-          delay(50);
-          bowiescoop.moveEnd(END_MIN, 3, 2); // dump scoop
-          delay(300);
-          bowiescoop.moveEnd(END_PARALLEL_TOP, 5, 1); // back into position
-          bowiehopper.moveLid(LID_MAX, 5, 1); // close lid
-          if(was_lid_parked) bowiehopper.parkLid();
-          performing_large_action = false;
-        }
-      }
-
-      if(packets[i].cmd == 'W') { // white button - scoop slow
-        if(packets[i].val == 1) {
-
-          if(servos_deactivated_over_current) return; // over current protection
-          if(performing_large_action) return; // don't do this action if we're already doing one
-
-          performing_large_action = true;
-          scoopSequence(1000);
-          performing_large_action = false;
-        }
-      }
-
-      if(packets[i].cmd == 'B') { // blue button - scoop fast
-        if(packets[i].val == 1) {
-
-          if(servos_deactivated_over_current) return; // over current protection
-          if(performing_large_action) return; // don't do this action if we're already doing one
-
-          performing_large_action = true;
-          scoopSequence(0);
-          performing_large_action = false;
-        }
-      }
-
-      if(packets[i].cmd == 'N') { // black button - empty
-        if(packets[i].val == 1) {
-
-          if(servos_deactivated_over_current) return; // over current protection
-          if(performing_large_action) return; // don't do this action if we're already doing one
-
-          performing_large_action = true;
-          bool was_hopper_parked = bowiehopper.getHopperParked();
-          if(was_hopper_parked) bowiehopper.unparkHopper();
-          bool was_lid_parked = bowiehopper.getLidParked();
-          if(was_lid_parked) bowiehopper.unparkLid();
-          deposit();
-          if(was_hopper_parked) bowiehopper.parkHopper();
-          if(was_lid_parked) bowiehopper.parkLid();
-          performing_large_action = false;
-        }
-      }
-
-    }
-  } // -- end of '#' action specifier
 
   if(m.action == '@') {
 
     if(packets[0].cmd == 'L' && packets[0].key == 1 && packets[1].cmd == 'R' && packets[1].key == 0) {
       // turning right
-      bowielights.setLight(1, MIN_BRIGHTNESS);
-      bowielights.setLight(3, MIN_BRIGHTNESS);
+      // for mini bowie, we will just keep all the lights on
+      bowielights.setLight(99, MAX_BRIGHTNESS);
       
-      bowielights.setLight(0, MAX_BRIGHTNESS);
-      bowielights.setLight(2, MAX_BRIGHTNESS);
-
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(false);
       } else {
@@ -491,11 +425,8 @@ void MegaBowieShoreline::control(Msg m) {
       return; // we don't want the default stuff below when turning
     } else if(packets[0].cmd == 'L' && packets[0].key == 0 && packets[1].cmd == 'R' && packets[1].key == 1) {
       // turning left
-      bowielights.setLight(0, MIN_BRIGHTNESS);
-      bowielights.setLight(2, MIN_BRIGHTNESS);
-      
-      bowielights.setLight(1, MAX_BRIGHTNESS);
-      bowielights.setLight(3, MAX_BRIGHTNESS);
+      // for mini bowie, we will just keep all the lights on
+      bowielights.setLight(99, MAX_BRIGHTNESS);
 
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(true);
@@ -575,32 +506,206 @@ void MegaBowieShoreline::control(Msg m) {
       }
       
       if(packets[i].cmd == 'S') { // arm (data from 0-100)
-        
+
         if(servos_deactivated_over_current) return; // over current protection
 
-        int temp_pos = bowiearm.getArmPos();
-        int new_pos = temp_pos;
-        
-        if(packets[i].key == 0) {
-          new_pos -= (packets[i].val*5);
-        } else if(packets[i].key == 1) {
-          new_pos += (packets[i].val*5);
+        uint8_t the_increment = 250;
+        int current_pos = bowiearm.getArmPos();
+        int new_pos = current_pos;
+
+        // update the direction the arm is heading
+        prev_target_heading = new_heading;
+        if(packets[i].val > 0) {
+          if(packets[i].key == 0) {
+            new_pos -= the_increment;
+            new_heading = false; // down
+            last_arm_control_cmd = current_time;
+            updating_arm = true;
+          } else if(packets[i].key == 1) {
+            new_pos += the_increment;
+            new_heading = true; // up
+            last_arm_control_cmd = current_time;
+            updating_arm = true;
+          }
+        } else {
+          updating_arm = false;
         }
 
-        if(new_pos < ARM_MIN) new_pos = ARM_MIN;
-        if(new_pos > ARM_MAX) new_pos = ARM_MAX;
-        bowiearm.moveArm(new_pos, 3, 3);
+        // check if the position has met the target
+        if(target_heading == false && current_pos >= (target_arm_pos-20)) {
+          update_target = true;
+        } else if(target_heading == true && current_pos <= (target_arm_pos+20)) {
+          update_target = true;
+        } else {
+          update_target = false;
+        }
 
-        // if(new_pos < ARM_HOME) {
-        //   moveArmAndEnd(new_pos, 3, 1, ARM_MIN, ARM_HOME, END_PARALLEL_BOTTOM-100, END_HOME-300); // END_PARALLEL_BOTTOM-700
-        // } else if(new_pos > ARM_HOME) {
-        //   moveArmAndEnd(new_pos, 3, 1, ARM_HOME, ARM_MAX, END_HOME-300, END_PARALLEL_TOP-200);
-        // }
+        // check if the heading changed
+        if(new_heading != prev_target_heading) {
+          update_target = true;
+        }
+
+        // set the new values if updating the target
+        if(update_target) {
+          if(BOT_DEBUG_MEGA) Serial << "Updating arm target" << endl;
+          target_arm_pos = new_pos;
+          target_heading = new_heading;
+        } else {
+          if(BOT_DEBUG_MEGA) Serial << "Not updating arm target" << endl;
+        }
 
       }
       
     }
   } // -- end of '@' action specifier
+
+  // they want to handle the control messages on the sketch side
+  // (most likely for custom behaviours)
+  if(!DEFAULT_ACTIONS) {
+    _controlCallback(m);
+    return;
+  }
+
+  // we've seen this happen *sometimes*, and it is highly unlikely that this would be an
+  // intentional command. let's make sure they mean this at least 2 times before listening
+  if(m.pck1.val == 255 && m.pck2.val == 255 && m.pck1.cmd == 'L' && m.pck2.cmd == 'R') {
+    unlikely_count++;
+    if(unlikely_count <= 2) return;
+  } else {
+    unlikely_count = 0;
+  }
+
+  if(m.action == '#') {
+
+    for(int i=0; i<2; i++) {
+
+      if(packets[i].cmd == 'P') { // red button
+        if(packets[i].val == 1) { // sends drive joystick cmds on operator side
+        }
+      }
+
+      if(packets[i].cmd == 'Y') { // yellow button
+        if(packets[i].val == 1) { // sends arm joystick cmds on operator side
+        }
+      }
+
+      if(packets[i].cmd == 'G') { // green button - empty
+        if(packets[i].val == 1) {
+
+          if(servos_deactivated_over_current) return; // over current protection
+
+          if(performing_large_action) return; // don't do this action if we're already doing one
+
+          performing_large_action = true;
+          bool was_lid_parked = bowiehopper.getLidParked();
+          if(was_lid_parked) bowiehopper.unparkLid();
+
+          emptyScoop();
+
+          if(was_lid_parked) bowiehopper.parkLid();
+          performing_large_action = false;
+          
+        }
+      }
+
+      if(packets[i].cmd == 'W') { // white button - scoop slow
+        if(packets[i].val == 1) {
+
+          if(servos_deactivated_over_current) return; // over current protection
+          if(performing_large_action) return; // don't do this action if we're already doing one
+
+          performing_large_action = true;
+          scoopSequence(1000);
+          performing_large_action = false;
+        }
+      }
+
+      if(packets[i].cmd == 'B') { // blue button - scoop fast
+        if(packets[i].val == 1) {
+
+          if(servos_deactivated_over_current) return; // over current protection
+          if(performing_large_action) return; // don't do this action if we're already doing one
+
+          performing_large_action = true;
+          scoopSequence(0);
+          performing_large_action = false;
+        }
+      }
+
+      if(packets[i].cmd == 'N') { // black button - dump
+        if(packets[i].val == 1) {
+
+          if(servos_deactivated_over_current) return; // over current protection
+          if(performing_large_action) return; // don't do this action if we're already doing one
+
+          performing_large_action = true;
+          bool was_hopper_parked = bowiehopper.getHopperParked();
+          bool was_lid_parked = bowiehopper.getLidParked();
+
+          if(was_hopper_parked) bowiehopper.unparkHopper();
+          if(was_lid_parked) bowiehopper.unparkLid();
+          
+          deposit();
+          
+          if(was_hopper_parked) bowiehopper.parkHopper();
+          if(was_lid_parked) bowiehopper.parkLid();
+          performing_large_action = false;
+        }
+      }
+
+    }
+  } // -- end of '#' action specifier
+
+}
+
+void MegaBowieShoreline::armOperatorControl() {
+
+  int current_arm_pos = bowiearm.getArmPos();
+  uint8_t step = 1;
+  uint8_t del = 3;
+
+  if(current_time-last_arm_control_cmd <= 500 && current_time > 3000 && updating_arm == true) {
+
+    if(target_heading == false) { // headed down to ARM_MIN
+      for(int i=current_arm_pos; i>target_arm_pos; i-=step) {
+        bowiearm.arm.writeMicroseconds(i);
+        bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+        bowiearm.setArmPos(i);
+
+        uint16_t endPos = 0;
+        if(i >= ARM_HOME) {
+          endPos = clawParallelValBounds(i, ARM_HOME, ARM_MAX, END_HOME-100, END_PARALLEL_TOP+300);
+        } else {
+          endPos = clawParallelValBounds(i, ARM_MIN, ARM_HOME, END_PARALLEL_BOTTOM-100, END_HOME-100);
+        }
+
+        bowiescoop.scoop.writeMicroseconds(endPos);
+        bowiescoop.setEndPos(endPos);
+        delay(del);
+        servoInterrupt(SERVO_ARM_AND_END_KEY, i);
+      }
+    } else if(target_heading == true) { // headed up to ARM_MAX
+    
+      for(int i=current_arm_pos; i<target_arm_pos; i+=step) {
+        bowiearm.arm.writeMicroseconds(i);
+        bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+        bowiearm.setArmPos(i);
+        
+        uint16_t endPos = 0;
+        if(i >= ARM_HOME) {
+          endPos = clawParallelValBounds(i, ARM_HOME, ARM_MAX, END_HOME-100, END_PARALLEL_TOP+300);
+        } else {
+          endPos = clawParallelValBounds(i, ARM_MIN, ARM_HOME, END_PARALLEL_BOTTOM-100, END_HOME-100);
+        }
+
+        bowiescoop.scoop.writeMicroseconds(endPos);
+        bowiescoop.setEndPos(endPos);
+        delay(del);
+        servoInterrupt(SERVO_ARM_AND_END_KEY, i);
+      }
+    }
+
+  }
 
 }
 
@@ -637,6 +742,31 @@ void MegaBowieShoreline::processServoInterrupt(int key, int val) {
   }
 
 }
+
+void MegaBowieShoreline::updatePeriodicMessages() {
+  // Updating our periodic messages
+
+  current_sensor_periodic.priority = 10;
+  current_sensor_periodic.action = '#';
+  current_sensor_periodic.pck1.cmd = 'E';
+  current_sensor_periodic.pck1.key = 1;
+  current_sensor_periodic.pck1.val = motorCurrent.getCurrentSensorReading();
+  current_sensor_periodic.pck2.cmd = 'F';
+  current_sensor_periodic.pck2.key = 1;
+  current_sensor_periodic.pck2.val = servoCurrent.getCurrentSensorReading();
+  current_sensor_periodic.delim = '!';
+
+  bowiecomms_xbee.updatePeriodicMessage(current_sensor_periodic);
+  bowiecomms_arduino.updatePeriodicMessage(current_sensor_periodic);
+  
+}
+
+
+/*
+
+---- Logging ----
+
+*/
 
 void MegaBowieShoreline::updateLogSensorData() {
 
@@ -687,24 +817,6 @@ void MegaBowieShoreline::updateLogSensorData() {
   bowielogger.setLogData_u16(LOG_COMM_XBEE_LATENCY, bowiecomms_xbee.getCommLatency());
   bowielogger.setLogData_u16(LOG_COMM_ARDUINO_LATENCY, bowiecomms_arduino.getCommLatency());
 
-}
-
-void MegaBowieShoreline::updatePeriodicMessages() {
-  // Updating our periodic messages
-
-  current_sensor_periodic.priority = 10;
-  current_sensor_periodic.action = '#';
-  current_sensor_periodic.pck1.cmd = 'E';
-  current_sensor_periodic.pck1.key = 1;
-  current_sensor_periodic.pck1.val = motorCurrent.getCurrentSensorReading();
-  current_sensor_periodic.pck2.cmd = 'F';
-  current_sensor_periodic.pck2.key = 1;
-  current_sensor_periodic.pck2.val = servoCurrent.getCurrentSensorReading();
-  current_sensor_periodic.delim = '!';
-
-  bowiecomms_xbee.updatePeriodicMessage(current_sensor_periodic);
-  bowiecomms_arduino.updatePeriodicMessage(current_sensor_periodic);
-  
 }
 
 
@@ -853,7 +965,6 @@ void MegaBowieShoreline::overCurrentThreshold_Motors(bool first) {
 ---- Movements ----
 
 */
-
 void MegaBowieShoreline::scoopSequence(int frame_delay) {
 
   // 1. move arm down (not all the way)
@@ -866,25 +977,23 @@ void MegaBowieShoreline::scoopSequence(int frame_delay) {
   // 8. tilt up quickly
 
   //bool DEBUGGING_ANIMATION = false;
-  bool was_hopper_parked = bowiehopper.getHopperParked();
-  bool was_lid_parked = bowiehopper.getLidParked();
-
-  //if(was_hopper_parked) bowie.unparkHopper();
-  //if(was_lid_parked) bowie.unparkLid();
+  
+  // bool was_hopper_parked = bowiehopper.getHopperParked();
+  // bool was_lid_parked = bowiehopper.getLidParked();
+  // if(was_hopper_parked) bowie.unparkHopper();
+  // if(was_lid_parked) bowie.unparkLid();
 
   // 2. 
   bowiescoop.moveEnd(END_PARALLEL_BOTTOM, 5, 1);
   delay(frame_delay);
 
   // 1.
-  bowiearm.moveArm(ARM_MIN+100, 4, 4);
+  bowiearm.moveArm(ARM_MIN+100, 1, 4);
   delay(frame_delay);
-
 
   // 2. 
   bowiescoop.moveEnd(END_PARALLEL_BOTTOM+300, 5, 1);
   delay(frame_delay);
-
 
   // 3.
   // drive forward a bit
@@ -896,12 +1005,10 @@ void MegaBowieShoreline::scoopSequence(int frame_delay) {
   // bowie.rampSpeed(true, 255, 100, 10, 5);
   // bowie.goSpeed(true, 0, 0);
   // if(DEBUGGING_ANIMATION) delay(3000);
-
   
   // 4.
   bowiescoop.moveEnd(END_PARALLEL_BOTTOM, 5, 1);
   delay(frame_delay);
-
 
   // 5.
   // drive forward a bit
@@ -1003,6 +1110,72 @@ void MegaBowieShoreline::scoopSequence(int frame_delay) {
 
 }
 
+void MegaBowieShoreline::emptyScoop() {
+
+  uint16_t prev_arm_pos = bowiearm.getArmPos();
+
+  // raise the arm while keeping scoop parallel to ground
+
+  uint16_t endPos;
+  uint16_t armPos;
+
+  for(int i=prev_arm_pos; i<ARM_MAX; i+=2) {
+    bowiearm.arm.writeMicroseconds(i);
+    bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+    bowiearm.setArmPos(i);
+    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, END_HOME, END_PARALLEL_TOP);
+    bowiescoop.scoop.writeMicroseconds(endPos);
+    bowiescoop.setEndPos(endPos);
+    delay(3); 
+    servoInterrupt(SERVO_ARM_AND_END_KEY, i);
+    //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
+  }
+  bowiearm.arm.writeMicroseconds(ARM_MAX);
+  bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - ARM_MAX + SERVO_MIN_US);
+  bowiearm.setArmPos(ARM_MAX);
+  bowiescoop.scoop.writeMicroseconds(END_PARALLEL_TOP);
+  bowiescoop.setEndPos(endPos);
+  delay(3);
+  servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
+
+  // ---
+
+  bowiehopper.moveLid(LID_MIN, 4, 1); // open lid
+
+  bowiescoop.moveEnd(END_MIN, 3, 2); // dump scoop
+  for(int i=0; i<4; i++) {
+    bowiescoop.moveEnd(END_MIN-100, 3, 1);
+    delay(10);
+    bowiescoop.moveEnd(END_MIN+100, 3, 1);
+    delay(10);
+  }
+
+  // lower the arm back to the previous position
+
+  for(int i=ARM_MAX; i>prev_arm_pos; i-=2) {
+    bowiearm.arm.writeMicroseconds(i);
+    bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+    bowiearm.setArmPos(i);
+    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, END_HOME, END_PARALLEL_TOP);
+    bowiescoop.scoop.writeMicroseconds(endPos);
+    bowiescoop.setEndPos(endPos);
+    delay(3); 
+    servoInterrupt(SERVO_ARM_AND_END_KEY, i);
+    //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
+  }
+  bowiearm.arm.writeMicroseconds(prev_arm_pos);
+  bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - prev_arm_pos + SERVO_MIN_US);
+  bowiearm.setArmPos(prev_arm_pos);
+  bowiescoop.scoop.writeMicroseconds(END_HOME);
+  bowiescoop.setEndPos(endPos);
+  delay(3);
+  servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
+
+
+  bowiehopper.moveLid(LID_MAX, 4, 1); // close lid
+
+}
+
 void MegaBowieShoreline::deposit() {
 
   bool was_arm_parked = bowiearm.getArmParked();
@@ -1085,7 +1258,7 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
 
   int arm_position = 0;
   int end_position = 0;
-
+  
   if(bowiearm.getArmPos() == ARM_MIN && bowiescoop.getEndPos() < END_MAX) { // check if the arm is down and if the end is going past being down
     Serial << "!!! Cannot move end-effector here when arm down" << endl;
     return;
@@ -1103,8 +1276,10 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
     for(int i=bowiearm.getArmPos(); i>armPos; i-=step) {
       bowiearm.arm.writeMicroseconds(i);
       bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+      bowiearm.setArmPos(i);
       endPos = clawParallelValBounds(i, armMin, armMax, endMin, endMax);
       bowiescoop.scoop.writeMicroseconds(endPos);
+      bowiescoop.setEndPos(endPos);
       arm_position = i;
       end_position = endPos;
       delay(del);
@@ -1115,8 +1290,10 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
     for(int i=bowiearm.getArmPos(); i<armPos; i+=step) {
       bowiearm.arm.writeMicroseconds(i);
       bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
+      bowiearm.setArmPos(i);
       endPos = clawParallelValBounds(i, armMin, armMax, endMin, endMax);
       bowiescoop.scoop.writeMicroseconds(endPos);
+      bowiescoop.setEndPos(endPos);
       arm_position = i;
       end_position = endPos;
       delay(del); 
@@ -1124,14 +1301,16 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
       //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
     }
   }
-  bowiearm.arm.writeMicroseconds(armPos);
-  bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - armPos + SERVO_MIN_US);
-  endPos = clawParallelValBounds(armPos, armMin, armMax, endMin, endMax);
-  bowiescoop.scoop.writeMicroseconds(endPos);
-  arm_position = armPos;
-  end_position = endPos;
-  delay(del);
-  servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
+  // bowiearm.arm.writeMicroseconds(armPos);
+  // bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - armPos + SERVO_MIN_US);
+  // bowiearm.setArmPos(armPos);
+  // endPos = clawParallelValBounds(armPos, armMin, armMax, endMin, endMax);
+  // bowiescoop.scoop.writeMicroseconds(endPos);
+  // bowiescoop.setEndPos(endPos);
+  // arm_position = armPos;
+  // end_position = endPos;
+  // delay(del);
+  // servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
   //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
 
   if(did_move_hopper) { // move hopper back to original position
@@ -1152,10 +1331,8 @@ int MegaBowieShoreline::clawParallelVal(int arm_Val) {
 } //constrain to make sure that it does not result in a value less than 800 - could make the servo rotate backwards.
 
 //get a parallel claw value
-int MegaBowieShoreline::clawParallelValBounds(int arm_Val, int armMin, int armMax, int endMin, int endMax){
-  return 1;
-  // TODO
-  //return (int)constrain( map(arm_Val, armMin, armMax, endMin, endMax) , endMin, endMax);
+int MegaBowieShoreline::clawParallelValBounds(int arm_Val, int armMin, int armMax, int endMin, int endMax) {
+  return (int)constrain( map(arm_Val, armMin, armMax, endMin, endMax) , endMin, endMax);
 } //constrain to make sure that it does not result in a value less than 800 - could make the servo rotate backwards.
 
 
