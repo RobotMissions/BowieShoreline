@@ -230,6 +230,10 @@ class MegaBowieShoreline {
     void disableOverCurrentProtection();
     void enableDefaultActions();
     void disableDefaultActions();
+    void enableSimpleMessageForwarding();
+    void disableSimpleMessageForwarding();
+    void enableMessageForwarding();
+    void disableMessageForwarding();
 
     // Movements
     void scoopSequence(int frame_delay);
@@ -250,6 +254,8 @@ class MegaBowieShoreline {
     bool LOGGING_ENABLED; // true by default
     bool TURN_SEQUENCE_MODE; // true by default
     bool DEFAULT_ACTIONS; // true by default
+    bool MESSAGE_FORWARDING; // false by default
+    bool SIMPLE_MESSAGE_FORWARDING; // true by default
 
     // Other
     uint8_t unlikely_count;

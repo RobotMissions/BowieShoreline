@@ -46,7 +46,7 @@ Below you will find the messages that can be input to the robot, and messages th
 | **Super Bright LEDs** | `#` | `Q` | `1` is front left TODO | `0` is off, `255` is full brightness |
 | **Joystick Button** | `#` | `J` | `1` is pressed on, `0` is pressed off | _None_ |
 | **Mode Switch** | `#` | `M` | _TBD_ | _TBD_ |
-| **State** | `#` | `N` | _TBD_ | _TBD_ |
+| **State** | `#` | `Z` | _TBD_ | _TBD_ |
 | **Operator ID** | `$` | `X` | `1` | `OPERATOR_ID` from `0` to `255` |
 
 

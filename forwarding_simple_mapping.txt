@@ -1,0 +1,12 @@
+P = button row 1 column 1 (old red button)
+Y = button row 1 column 2 (old yellow button)
+G = button row 1 column 3 (old green button)
+Q = button row 2 column 1 (old white button)
+B = button row 2 column 2 (old blue button)
+N = button row 2 column 3 (old black button)
+J = joystick button pressed on
+U = joystick button pressed off
+W = joystick up
+A = joystick left
+S = joystick down
+D = joystick right

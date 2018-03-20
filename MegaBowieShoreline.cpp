@@ -27,6 +27,8 @@ void MegaBowieShoreline::begin() {
   LOGGING_ENABLED = true;
   TURN_SEQUENCE_MODE = true;
   DEFAULT_ACTIONS = true;
+  MESSAGE_FORWARDING = false;
+  SIMPLE_MESSAGE_FORWARDING = true;
 
   unlikely_count = 0;
   current_time = 0;
@@ -157,7 +159,7 @@ void MegaBowieShoreline::begin() {
   bowiecomms_arduino.set_controller_added_callback(controllerAdded_Arduino);
   bowiecomms_arduino.set_controller_removed_callback(controllerRemoved_Arduino);
 
-  bowiecomms_arduino.initComms(ARDUINO_CONN, 9600);
+  bowiecomms_arduino.initComms(BT_CONN, 9600);
 
   bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
   
@@ -207,6 +209,23 @@ void MegaBowieShoreline::enableDefaultActions() {
 void MegaBowieShoreline::disableDefaultActions() {
   DEFAULT_ACTIONS = false;
 }
+
+void MegaBowieShoreline::enableSimpleMessageForwarding() {
+  SIMPLE_MESSAGE_FORWARDING = true;
+}
+
+void MegaBowieShoreline::disableSimpleMessageForwarding() {
+  SIMPLE_MESSAGE_FORWARDING = false; 
+}
+
+void MegaBowieShoreline::enableMessageForwarding() {
+  MESSAGE_FORWARDING = true;
+}
+
+void MegaBowieShoreline::disableMessageForwarding() {
+  MESSAGE_FORWARDING = false; 
+}
+
 
 
 /*
@@ -338,9 +357,9 @@ void MegaBowieShoreline::update(bool force_no_sleep) {
 
   // comms
   bowiecomms_xbee.updateComms();
-  /*
   bowiecomms_arduino.updateComms();
 
+  /*
   // specific things to do if remote operation is enabled
   if(REMOTE_OP_ENABLED) {
 
@@ -412,7 +431,7 @@ void MegaBowieShoreline::control(Msg m) {
     if(packets[0].cmd == 'L' && packets[0].key == 1 && packets[1].cmd == 'R' && packets[1].key == 0) {
       // turning right
       // for mini bowie, we will just keep all the lights on
-      bowielights.setLight(99, MAX_BRIGHTNESS);
+      // bowielights.setLight(99, MAX_BRIGHTNESS);
       
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(false);
@@ -426,7 +445,7 @@ void MegaBowieShoreline::control(Msg m) {
     } else if(packets[0].cmd == 'L' && packets[0].key == 0 && packets[1].cmd == 'R' && packets[1].key == 1) {
       // turning left
       // for mini bowie, we will just keep all the lights on
-      bowielights.setLight(99, MAX_BRIGHTNESS);
+      // bowielights.setLight(99, MAX_BRIGHTNESS);
 
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(true);
@@ -555,6 +574,27 @@ void MegaBowieShoreline::control(Msg m) {
         }
 
       }
+
+      // Simplified joystick send
+      if(packets[i].cmd == 'K') {
+        if(packets[i].key == 1) { // up
+
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('W');
+
+        } else if(packets[i].key == 2) { // right
+
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('D');
+
+        } else if(packets[i].key == 3) { // down
+
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('S');
+
+        } else if(packets[i].key == 4) { // left
+
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('A');
+
+        }
+      }
       
     }
   } // -- end of '@' action specifier
@@ -577,20 +617,33 @@ void MegaBowieShoreline::control(Msg m) {
 
   if(m.action == '#') {
 
+    // the key represents which mode the operator interface is on.
+    // so we will check to make sure the default actions only
+    // happen on MODE1 (which == 1).
+
     for(int i=0; i<2; i++) {
 
       if(packets[i].cmd == 'P') { // red button
         if(packets[i].val == 1) { // sends drive joystick cmds on operator side
         }
+
+        // simplified message forwarding to the attached arduino module
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('P');
+
+        // message forwarding to the attached arduino in API mode
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+
       }
 
       if(packets[i].cmd == 'Y') { // yellow button
         if(packets[i].val == 1) { // sends arm joystick cmds on operator side
         }
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Y');
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
       if(packets[i].cmd == 'G') { // green button - empty
-        if(packets[i].val == 1) {
+        if(packets[i].val == 1 && packets[i].key == 1) {
 
           if(servos_deactivated_over_current) return; // over current protection
 
@@ -606,10 +659,13 @@ void MegaBowieShoreline::control(Msg m) {
           performing_large_action = false;
           
         }
+
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('G');
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
       if(packets[i].cmd == 'W') { // white button - scoop slow
-        if(packets[i].val == 1) {
+        if(packets[i].val == 1 && packets[i].key == 1) {
 
           if(servos_deactivated_over_current) return; // over current protection
           if(performing_large_action) return; // don't do this action if we're already doing one
@@ -618,10 +674,13 @@ void MegaBowieShoreline::control(Msg m) {
           scoopSequence(1000);
           performing_large_action = false;
         }
+
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Q'); // no, this is not a mistake
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
       if(packets[i].cmd == 'B') { // blue button - scoop fast
-        if(packets[i].val == 1) {
+        if(packets[i].val == 1 && packets[i].key == 1) {
 
           if(servos_deactivated_over_current) return; // over current protection
           if(performing_large_action) return; // don't do this action if we're already doing one
@@ -630,10 +689,13 @@ void MegaBowieShoreline::control(Msg m) {
           scoopSequence(0);
           performing_large_action = false;
         }
+
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('B');
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
       if(packets[i].cmd == 'N') { // black button - dump
-        if(packets[i].val == 1) {
+        if(packets[i].val == 1 && packets[i].key == 1) {
 
           if(servos_deactivated_over_current) return; // over current protection
           if(performing_large_action) return; // don't do this action if we're already doing one
@@ -651,9 +713,30 @@ void MegaBowieShoreline::control(Msg m) {
           if(was_lid_parked) bowiehopper.parkLid();
           performing_large_action = false;
         }
+
+        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('N');
+        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+      }
+
+      if(packets[i].cmd == 'J') { // joystick button
+
+        // TODO: check to make sure 0 does not send continuously
+        if(packets[i].cmd == 1) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('J');
+          if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        } else if(packets[i].cmd == 0) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('U');
+          if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        }
+
+      }
+
+      if(packets[i].cmd == 'Q') { // turn on super bright leds
+        bowielights.setLight(packets[i].key, packets[i].val);
       }
 
     }
+
   } // -- end of '#' action specifier
 
 }
