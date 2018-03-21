@@ -159,9 +159,11 @@ void MegaBowieShoreline::begin() {
   bowiecomms_arduino.set_controller_added_callback(controllerAdded_Arduino);
   bowiecomms_arduino.set_controller_removed_callback(controllerRemoved_Arduino);
 
+  bowiecomms_arduino.disableReply();
+
   bowiecomms_arduino.initComms(BT_CONN, 9600);
 
-  bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
+  //bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
   
   Serial << "Bowie is ready" << endl;
 
@@ -625,10 +627,9 @@ void MegaBowieShoreline::control(Msg m) {
 
       if(packets[i].cmd == 'P') { // red button
         if(packets[i].val == 1) { // sends drive joystick cmds on operator side
+          // simplified message forwarding to the attached arduino module
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('P');
         }
-
-        // simplified message forwarding to the attached arduino module
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('P');
 
         // message forwarding to the attached arduino in API mode
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
@@ -637,8 +638,8 @@ void MegaBowieShoreline::control(Msg m) {
 
       if(packets[i].cmd == 'Y') { // yellow button
         if(packets[i].val == 1) { // sends arm joystick cmds on operator side
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Y');
         }
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Y');
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
@@ -660,7 +661,9 @@ void MegaBowieShoreline::control(Msg m) {
           
         }
 
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('G');
+        if(packets[i].val == 1) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('G');
+        }
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
@@ -675,7 +678,9 @@ void MegaBowieShoreline::control(Msg m) {
           performing_large_action = false;
         }
 
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Q'); // no, this is not a mistake
+        if(packets[i].val == 1) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Q'); // no, this is not a mistake
+        }
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
@@ -690,7 +695,9 @@ void MegaBowieShoreline::control(Msg m) {
           performing_large_action = false;
         }
 
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('B');
+        if(packets[i].val == 1) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('B');
+        }
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
@@ -714,7 +721,9 @@ void MegaBowieShoreline::control(Msg m) {
           performing_large_action = false;
         }
 
-        if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('N');
+        if(packets[i].val == 1) {
+          if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('N');
+        }
         if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
       }
 
@@ -806,7 +815,7 @@ void MegaBowieShoreline::processServoInterrupt(int key, int val) {
     bowiecomms_xbee.updateComms();
   }
   if(current_time-bowiecomms_arduino.getLastRXTime() >= 500) {
-    bowiecomms_arduino.updateComms();
+    //bowiecomms_arduino.updateComms();
   }
 
   switch(key) {
@@ -840,7 +849,7 @@ void MegaBowieShoreline::updatePeriodicMessages() {
   current_sensor_periodic.delim = '!';
 
   bowiecomms_xbee.updatePeriodicMessage(current_sensor_periodic);
-  bowiecomms_arduino.updatePeriodicMessage(current_sensor_periodic);
+  //bowiecomms_arduino.updatePeriodicMessage(current_sensor_periodic);
   
 }
 
