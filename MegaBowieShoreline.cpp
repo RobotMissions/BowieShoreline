@@ -632,7 +632,10 @@ void MegaBowieShoreline::control(Msg m) {
         }
 
         // message forwarding to the attached arduino in API mode
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message P" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
 
       }
 
@@ -640,7 +643,10 @@ void MegaBowieShoreline::control(Msg m) {
         if(packets[i].val == 1) { // sends arm joystick cmds on operator side
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Y');
         }
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message Y" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
       }
 
       if(packets[i].cmd == 'G') { // green button - empty
@@ -664,7 +670,10 @@ void MegaBowieShoreline::control(Msg m) {
         if(packets[i].val == 1) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('G');
         }
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message G" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
       }
 
       if(packets[i].cmd == 'W') { // white button - scoop slow
@@ -681,7 +690,10 @@ void MegaBowieShoreline::control(Msg m) {
         if(packets[i].val == 1) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('Q'); // no, this is not a mistake
         }
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message W" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
       }
 
       if(packets[i].cmd == 'B') { // blue button - scoop fast
@@ -698,7 +710,10 @@ void MegaBowieShoreline::control(Msg m) {
         if(packets[i].val == 1) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('B');
         }
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message B" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
       }
 
       if(packets[i].cmd == 'N') { // black button - dump
@@ -724,7 +739,10 @@ void MegaBowieShoreline::control(Msg m) {
         if(packets[i].val == 1) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('N');
         }
-        if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+        if(MESSAGE_FORWARDING) {
+          Serial << "Forwarding message N" << endl;
+          bowiecomms_arduino.connSend(m);
+        }
       }
 
       if(packets[i].cmd == 'J') { // joystick button
@@ -732,10 +750,16 @@ void MegaBowieShoreline::control(Msg m) {
         // TODO: check to make sure 0 does not send continuously
         if(packets[i].cmd == 1) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('J');
-          if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+          if(MESSAGE_FORWARDING) {
+            Serial << "Forwarding message J (1)" << endl;
+            bowiecomms_arduino.connSend(m);
+          }
         } else if(packets[i].cmd == 0) {
           if(SIMPLE_MESSAGE_FORWARDING) bowiecomms_arduino.connSendEasy('U');
-          if(MESSAGE_FORWARDING) bowiecomms_arduino.insertMsg(m);
+          if(MESSAGE_FORWARDING) {
+            Serial << "Forwarding message J (0)" << endl;
+            bowiecomms_arduino.connSend(m);
+          }
         }
 
       }
