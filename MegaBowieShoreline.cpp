@@ -167,6 +167,10 @@ void MegaBowieShoreline::begin() {
   
   Serial << "Bowie is ready" << endl;
 
+  // set initial positions
+  bowiearm.moveArm(ARM_MAX, 3, 2);
+  bowiescoop.moveEnd(END_PARALLEL_TOP, 3, 2);
+
 }
 
 void MegaBowieShoreline::set_control_callback( void (*controlCallback)(Msg m) ) {

@@ -64,8 +64,8 @@ void MiniBowieShoreline::begin() {
   bowiearm.setArm2ServoPin(SERVO_ARM2);
   bowiearm.setServoInterruptCallback(servoInterrupt);
   bowiearm.initServos();
-
-
+  
+  
   // Hopper
   bowiehopper.begin();
 
@@ -87,7 +87,7 @@ void MiniBowieShoreline::begin() {
   bowiescoop.setServoInterruptCallback(servoInterrupt);
 
   bowiescoop.initServos();
-
+  
 
   // Current Sensors
   servoCurrent.begin();
@@ -163,6 +163,10 @@ void MiniBowieShoreline::begin() {
   bowiecomms_arduino.addPeriodicMessage(current_sensor_periodic);
   
   Serial << "Bowie is ready" << endl;
+
+  // set initial positions
+  bowiearm.moveArm(ARM_MAX, 3, 2);
+  bowiescoop.moveEnd(END_PARALLEL_TOP, 3, 2);
 
 }
 
