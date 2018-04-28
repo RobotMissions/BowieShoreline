@@ -38,8 +38,8 @@ Below you will find the messages that can be input to the robot, and messages th
 | **Arm** | `#` | `S` | `1` for up, `0` for down | Value to increment the position by |
 | **Scoop** | `#` | `C` | _TBD_ | _TBD_ |
 | **Button #1 (Red)** | `#` | `P` | `1` is pressed on, `0` is pressed off | _None_ |
-| **Button #2 (Green)** | `#` | `G` | `1` is pressed on, `0` is pressed off | _None_ |
-| **Button #3 (Yellow)** | `#` | `Y` | `1` is pressed on, `0` is pressed off | _None_ |
+| **Button #2 (Yellow)** | `#` | `Y` | `1` is pressed on, `0` is pressed off | _None_ |
+| **Button #3 (Green)** | `#` | `G` | `1` is pressed on, `0` is pressed off | _None_ |
 | **Button #4 (Blue)** | `#` | `B` | `1` is pressed on, `0` is pressed off | _None_ |
 | **Button #5 (White)** | `#` | `W` | `1` is pressed on, `0` is pressed off | _None_ |
 | **Button #6 (Black)** | `#` | `N` | `1` is pressed on, `0` is pressed off | _None_ |
