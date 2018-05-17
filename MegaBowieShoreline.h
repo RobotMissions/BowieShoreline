@@ -97,6 +97,13 @@
 #define SERVO_EXTRA_KEY 5
 #endif
 
+// TODO - this will have to change in the future,
+// because we'll have extra modules, so they shouldn't
+// need to be all defined in here...
+#ifndef SERVO_CLAW_KEY
+#define SERVO_CLAW_KEY 7
+#endif
+
 // speaker
 // source: https://www.hackster.io/sanyam-chugh/super-mario-beats-on-arduino-5d96a8
 #define NOTE_B0  31
@@ -194,6 +201,9 @@ class MegaBowieShoreline {
   static MegaBowieShoreline *bowieInstance;
 
   public:
+
+    bool not_inited;
+
     MegaBowieShoreline();
     void setRobotID(uint8_t the_robot_id);
     void begin();

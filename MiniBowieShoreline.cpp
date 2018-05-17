@@ -353,9 +353,9 @@ void MiniBowieShoreline::update(bool force_no_sleep) {
       // go to sleep if we haven't heard in a while
       if(millis()-last_ctrl >= REMOTE_OP_SLEEP) {
         digitalWrite(COMM_LED, LOW);
-        bowiedrive.motor_setDir(0, MOTOR_DIR_REV);
+        bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_REV);
         bowiedrive.motor_setSpeed(0, 0);
-        bowiedrive.motor_setDir(1, MOTOR_DIR_REV);
+        bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_REV);
         bowiedrive.motor_setSpeed(1, 0);
         if(!servos_deactivated_over_current) {
           bowielights.dimLights();
@@ -406,6 +406,12 @@ void MiniBowieShoreline::control(Msg m) {
     Serial << "*c2 cmd: " << packets[1].cmd << " key: " << packets[1].key << " val: " << packets[1].val << endl;
   }
 
+  // they want to handle the control messages on the sketch side
+  // (most likely for custom behaviours)
+  if(!DEFAULT_ACTIONS) {
+    _controlCallback(m);
+    return;
+  }
 
   if(m.action == '@') {
 
@@ -417,9 +423,9 @@ void MiniBowieShoreline::control(Msg m) {
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(false);
       } else {
-        bowiedrive.motor_setDir(1, MOTOR_DIR_FWD);
+        bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
         bowiedrive.motor_setSpeed(1, 255);
-        bowiedrive.motor_setDir(0, MOTOR_DIR_REV);
+        bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_REV);
         bowiedrive.motor_setSpeed(0, 255);
       }
       return; // we don't want the default stuff below when turning
@@ -431,9 +437,9 @@ void MiniBowieShoreline::control(Msg m) {
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(true);
       } else {
-        bowiedrive.motor_setDir(0, MOTOR_DIR_FWD);
+        bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_FWD);
         bowiedrive.motor_setSpeed(0, 255);
-        bowiedrive.motor_setDir(1, MOTOR_DIR_REV);
+        bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_REV);
         bowiedrive.motor_setSpeed(1, 255);
       }
       return; // we don't want the default stuff below when turning
@@ -442,9 +448,9 @@ void MiniBowieShoreline::control(Msg m) {
     // stop the motors when zeroed
     if(packets[0].cmd == 'L' && packets[0].key == 0 && packets[0].val == 0 && packets[1].cmd == 'R' && packets[1].key == 0 && packets[1].val == 0) {
       // TODO (future) ramp this down from last speed
-      bowiedrive.motor_setDir(0, MOTOR_DIR_FWD);
+      bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_FWD);
       bowiedrive.motor_setSpeed(0, 0);
-      bowiedrive.motor_setDir(1, MOTOR_DIR_FWD);
+      bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
       bowiedrive.motor_setSpeed(1, 0);
       bowielights.setLight(99, MIN_BRIGHTNESS);
     }
@@ -464,7 +470,7 @@ void MiniBowieShoreline::control(Msg m) {
           }
           bowielights.setLight(2, MIN_BRIGHTNESS);
           //leftBork();
-          bowiedrive.motor_setDir(0, MOTOR_DIR_FWD);
+          bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_FWD);
           bowiedrive.motor_setSpeed(0, packets[i].val);
         } else if(packets[i].key == 0) { // bwd
           bowielights.setLight(0, MIN_BRIGHTNESS);
@@ -474,7 +480,7 @@ void MiniBowieShoreline::control(Msg m) {
             bowielights.setLight(2, MIN_BRIGHTNESS);
           }
           //leftBork();
-          bowiedrive.motor_setDir(0, MOTOR_DIR_REV);
+          bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(0, packets[i].val);
         }
       }
@@ -490,7 +496,7 @@ void MiniBowieShoreline::control(Msg m) {
           bowielights.setLight(1, packets[i].val);
           bowielights.setLight(3, MIN_BRIGHTNESS);
           //leftBork();
-          bowiedrive.motor_setDir(1, MOTOR_DIR_FWD);
+          bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
           bowiedrive.motor_setSpeed(1, packets[i].val);
         } else if(packets[i].key == 0) { // bwd
           if(packets[i].val > MIN_BRIGHTNESS) {
@@ -500,7 +506,7 @@ void MiniBowieShoreline::control(Msg m) {
           }
           bowielights.setLight(1, MIN_BRIGHTNESS);
           //leftBork();
-          bowiedrive.motor_setDir(1, MOTOR_DIR_REV);
+          bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(1, packets[i].val);
         }
       }
@@ -558,13 +564,6 @@ void MiniBowieShoreline::control(Msg m) {
       
     }
   } // -- end of '@' action specifier
-
-  // they want to handle the control messages on the sketch side
-  // (most likely for custom behaviours)
-  if(!DEFAULT_ACTIONS) {
-    _controlCallback(m);
-    return;
-  }
 
   // we've seen this happen *sometimes*, and it is highly unlikely that this would be an
   // intentional command. let's make sure they mean this at least 2 times before listening
@@ -664,7 +663,7 @@ void MiniBowieShoreline::armOperatorControl() {
   uint8_t step = 1;
   uint8_t del = 3;
 
-  if(current_time-last_arm_control_cmd <= 500 && current_time > 3000 && updating_arm == true) {
+  if(current_time-last_arm_control_cmd <= 500 && current_time > 3000 && updating_arm == true  && last_arm_control_cmd == 0) {
 
     if(target_heading == false) { // headed down to ARM_MIN
       for(int i=current_arm_pos; i>target_arm_pos; i-=step) {
