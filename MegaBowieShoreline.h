@@ -51,8 +51,8 @@
 #define MOTORB_CTRL2 12 // ?BL
 
 // servo pins
-#define SERVO_ARM1 6
-#define SERVO_ARM2 5
+#define SERVO_ARM1 6 // left
+#define SERVO_ARM2 5 // right
 #define SERVO_END_EFFECTOR 4
 #define SERVO_HOPPER_PIVOT 3
 #define SERVO_HOPPER_LID 25
@@ -75,7 +75,7 @@
 #define SCOOP_PROBE_LEFT A18
 #define SCOOP_PROBE_RIGHT A17
 
-#define REMOTE_OP_SLEEP 300
+#define REMOTE_OP_SLEEP 30000
 
 #ifndef SERVO_ARM_KEY
 #define SERVO_ARM_KEY 1
@@ -202,8 +202,6 @@ class MegaBowieShoreline {
 
   public:
 
-    bool not_inited;
-
     MegaBowieShoreline();
     void setRobotID(uint8_t the_robot_id);
     void begin();
@@ -228,6 +226,8 @@ class MegaBowieShoreline {
     void update(bool force_no_sleep);
     static void received_action(Msg m);
     void control(Msg m);
+    void joystickDriveControl(Msg m);
+    void joystickArmControl(Msg m);
     static void servoInterrupt(int key, int val);
     bool performing_large_action;
     
