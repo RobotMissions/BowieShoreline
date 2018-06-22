@@ -168,8 +168,13 @@ void MegaBowieShoreline::begin() {
   Serial << "Bowie is ready" << endl;
 
   // set initial positions
-  bowiearm.moveArm(ARM_MAX, 3, 2);
-  bowiescoop.moveEnd(END_PARALLEL_TOP, 3, 2);
+  bowiearm.moveArm(ARM_MAX, 2, 4);
+  bowiescoop.moveEnd(END_PARALLEL_TOP, 2, 4);
+  bowiehopper.moveHopper(TILT_MAX, 2, 4);
+  bowiehopper.moveLid(LID_MAX, 2, 4);
+  delay(100);
+  bowiehopper.parkHopper();
+  bowiehopper.parkLid();
 
 }
 
@@ -1270,25 +1275,38 @@ void MegaBowieShoreline::emptyScoop() {
 
   uint16_t prev_arm_pos = bowiearm.getArmPos();
 
-  uint16_t endPos;
-  uint16_t armPos;
+  int endPos;
+  int armPos;
 
-  uint16_t arm_to_dump_pos = ARM_MAX+200;
+  uint16_t arm_to_dump_pos = ARM_MAX+100;
+
+  if(bowiehopper.getLidParked()) bowiehopper.unparkLid();
+
+  // tilt scoop up a bit
+  for(int i=END_HOME; i<END_HOME+300; i+=2) {
+    bowiescoop.scoop.writeMicroseconds(i);
+    bowiescoop.setEndPos(i);
+    servoInterrupt(SERVO_END_KEY, i);
+  }
+  bowiescoop.scoop.writeMicroseconds(END_HOME+300);
+  bowiescoop.setEndPos((END_HOME+300));
+  endPos = bowiescoop.getEndPos(); // setting this here to avoid errors (weird but true)
+  servoInterrupt(SERVO_END_KEY, END_HOME+300);
 
   // raise the arm while keeping scoop parallel to ground
   if(BOT_DEBUG_MEGA) Serial << "Going to ARM_MAX..." << endl;
   for(int i=prev_arm_pos; i<ARM_MAX; i+=2) {
-    bowiearm.arm.writeMicroseconds(i + SERVO_OFFSET);
+    bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
     bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
     bowiearm.setArmPos(i);
-    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, END_HOME, END_PARALLEL_TOP);
+    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, (END_HOME+300), END_PARALLEL_TOP);
     bowiescoop.scoop.writeMicroseconds(endPos);
     bowiescoop.setEndPos(endPos);
     delay(3); 
     servoInterrupt(SERVO_ARM_AND_END_KEY, i);
     //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
   }
-  bowiearm.arm.writeMicroseconds(ARM_MAX + SERVO_OFFSET);
+  bowiearm.arm.writeMicroseconds(ARM_MAX + bowiearm.SERVO_OFFSET);
   bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - ARM_MAX + SERVO_MIN_US);
   bowiearm.setArmPos(ARM_MAX);
   bowiescoop.scoop.writeMicroseconds(END_PARALLEL_TOP);
@@ -1305,32 +1323,41 @@ void MegaBowieShoreline::emptyScoop() {
   // move closer (nudging the arm a bit closer to hopper)
   if(BOT_DEBUG_MEGA) Serial << "Going to arm_to_dump_pos..." << endl;
   for(int i=ARM_MAX; i<arm_to_dump_pos; i+=2) {
-    bowiearm.arm.writeMicroseconds(i + SERVO_OFFSET);
+    bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
     bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
     bowiearm.setArmPos(i);
     delay(3);
     servoInterrupt(SERVO_ARM_KEY, i);
   }
-  bowiearm.arm.writeMicroseconds(arm_to_dump_pos + SERVO_OFFSET);
+  bowiearm.arm.writeMicroseconds(arm_to_dump_pos + bowiearm.SERVO_OFFSET);
   bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - arm_to_dump_pos + SERVO_MIN_US);
   bowiearm.setArmPos(arm_to_dump_pos);
   delay(3);
   servoInterrupt(SERVO_ARM_KEY, arm_to_dump_pos);
 
+  bowieInstance = this;
+
+  Serial << "ok1" << endl;
+  bowiescoop.moveEnd(500, 3, 2);
+  Serial << "ok2" << endl;
+
   // dump scoop
   if(BOT_DEBUG_MEGA) Serial << "Going to END_MIN..." << endl;
   bowiescoop.moveEnd(END_MIN, 3, 2);
+  Serial << "a1" << endl;
   for(int i=0; i<4; i++) {
     bowiescoop.moveEnd(END_MIN-100, 3, 1);
-    delay(10);
+    delay(100);
+    Serial << "a2" << endl;
     bowiescoop.moveEnd(END_MIN+100, 3, 1);
-    delay(10);
+    delay(100);
+    Serial << "a3" << endl;
   }
 
   // lower the arm back to the previous position
   if(BOT_DEBUG_MEGA) Serial << "Going to prev_arm_pos..." << endl;
   for(int i=arm_to_dump_pos; i>prev_arm_pos; i-=2) {
-    bowiearm.arm.writeMicroseconds(i + SERVO_OFFSET);
+    bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
     bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
     bowiearm.setArmPos(i);
     endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, END_HOME, END_PARALLEL_TOP);
@@ -1340,7 +1367,7 @@ void MegaBowieShoreline::emptyScoop() {
     servoInterrupt(SERVO_ARM_AND_END_KEY, i);
     //if(SERVO_OVER_CURRENT_SHUTDOWN) return; // break out of here so the pos doesn't keep moving
   }
-  bowiearm.arm.writeMicroseconds(prev_arm_pos + SERVO_OFFSET);
+  bowiearm.arm.writeMicroseconds(prev_arm_pos + bowiearm.SERVO_OFFSET);
   bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - prev_arm_pos + SERVO_MIN_US);
   bowiearm.setArmPos(prev_arm_pos);
   bowiescoop.scoop.writeMicroseconds(END_HOME);
@@ -1453,7 +1480,7 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
 
   if(bowiearm.getArmPos() > armPos) { // headed towards ARM_MIN
     for(int i=bowiearm.getArmPos(); i>armPos; i-=step) {
-      bowiearm.arm.writeMicroseconds(i + SERVO_OFFSET);
+      bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
       bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
       bowiearm.setArmPos(i);
       endPos = clawParallelValBounds(i, armMin, armMax, endMin, endMax);
@@ -1467,7 +1494,7 @@ void MegaBowieShoreline::moveArmAndEnd(int armPos, int step, int del, int armMin
     }
   } else if(bowiearm.getArmPos() <= armPos) { // headed towards ARM_MAX
     for(int i=bowiearm.getArmPos(); i<armPos; i+=step) {
-      bowiearm.arm.writeMicroseconds(i + SERVO_OFFSET);
+      bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
       bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
       bowiearm.setArmPos(i);
       endPos = clawParallelValBounds(i, armMin, armMax, endMin, endMax);

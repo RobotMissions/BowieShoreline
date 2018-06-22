@@ -35,7 +35,7 @@
 #ifndef _MEGABOWIESHORELINE_H_
 #define _MEGABOWIESHORELINE_H_
 
-#define BOT_DEBUG_MEGA false   // anything with the robot
+#define BOT_DEBUG_MEGA true   // anything with the robot
 #define COMM_DEBUG_MEGA false // anything with promulgate
 #define OP_DEBUG_MEGA false    // anything with buttons, or op in general
 #define XBEE_DEBUG_MEGA false // anything with the xbee scope
