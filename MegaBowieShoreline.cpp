@@ -973,7 +973,7 @@ void MegaBowieShoreline::updateLogSensorData() {
   // bowielogger.setLogData_f(LOG_GPS_ALTITUDE, gps_alt);
 
   // TODO - battery sensor
-  //bowielogger.setLogData_u16(LOG_BATTERY_SENSOR, analogRead(A24));  
+  bowielogger.setLogData_u16(LOG_BATTERY_SENSOR, (analogRead(A19)/1024*3.3*1.33));  
 
   bowielogger.setLogData_u16(LOG_COMM_XBEE_LATENCY, bowiecomms_xbee.getCommLatency());
   bowielogger.setLogData_u16(LOG_COMM_ARDUINO_LATENCY, bowiecomms_arduino.getCommLatency());
