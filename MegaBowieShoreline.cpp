@@ -12,6 +12,18 @@ void MegaBowieShoreline::setRobotID(uint8_t the_robot_id) {
   ROBOT_ID = the_robot_id;
 }
 
+
+void MegaBowieShoreline::setStates() {
+  REMOTE_OP_ENABLED = true;
+  PREVENT_OVER_CURRENT = false;
+  LOGGING_ENABLED = true;
+  TURN_SEQUENCE_MODE = true;
+  DEFAULT_ACTIONS = true;
+  MESSAGE_FORWARDING = false;
+  SIMPLE_MESSAGE_FORWARDING = true;
+  XBEE_TRANSPARENT = false;
+}
+
 void MegaBowieShoreline::begin() {
 
   Serial << "Bowie is getting started......." << endl;
@@ -21,14 +33,6 @@ void MegaBowieShoreline::begin() {
   ROBOT_ID = 3;
   
   performing_large_action = false;
-
-  REMOTE_OP_ENABLED = true;
-  PREVENT_OVER_CURRENT = false;
-  LOGGING_ENABLED = true;
-  TURN_SEQUENCE_MODE = true;
-  DEFAULT_ACTIONS = true;
-  MESSAGE_FORWARDING = false;
-  SIMPLE_MESSAGE_FORWARDING = true;
 
   unlikely_count = 0;
   current_time = 0;
@@ -143,7 +147,11 @@ void MegaBowieShoreline::begin() {
   bowiecomms_xbee.set_controller_added_callback(controllerAdded_Xbee);
   bowiecomms_xbee.set_controller_removed_callback(controllerRemoved_Xbee);
 
-  bowiecomms_xbee.initComms(XBEE_CONN, 9600);
+  if(XBEE_TRANSPARENT == true) {
+    bowiecomms_xbee.initComms(XBEE_TRANSPARENT_CONN, 9600);
+  } else {
+    bowiecomms_xbee.initComms(XBEE_CONN, 9600);
+  }
 
   current_sensor_periodic = bowiecomms_xbee.msg_none;
   bowiecomms_xbee.addPeriodicMessage(current_sensor_periodic);
@@ -236,6 +244,15 @@ void MegaBowieShoreline::enableMessageForwarding() {
 void MegaBowieShoreline::disableMessageForwarding() {
   MESSAGE_FORWARDING = false; 
 }
+
+void MegaBowieShoreline::enableTransparentMode() {
+  XBEE_TRANSPARENT = true;
+}
+
+void MegaBowieShoreline::disableTransparentMode() {
+  XBEE_TRANSPARENT = false;
+}
+
 
 
 
@@ -448,6 +465,9 @@ void MegaBowieShoreline::joystickDriveControl(Msg m) {
       // for mini bowie, we will just keep all the lights on
       // bowielights.setLight(99, MAX_BRIGHTNESS);
       
+      bowielights.setLight(0, MAX_BRIGHTNESS);
+      bowielights.setLight(2, MAX_BRIGHTNESS);
+
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(false);
       } else {
@@ -461,6 +481,9 @@ void MegaBowieShoreline::joystickDriveControl(Msg m) {
       // turning left
       // for mini bowie, we will just keep all the lights on
       // bowielights.setLight(99, MAX_BRIGHTNESS);
+
+      bowielights.setLight(1, MAX_BRIGHTNESS);
+      bowielights.setLight(3, MAX_BRIGHTNESS);
 
       if(TURN_SEQUENCE_MODE) {
         bowiedrive.turnSequence(true);
@@ -481,6 +504,7 @@ void MegaBowieShoreline::joystickDriveControl(Msg m) {
       bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
       bowiedrive.motor_setSpeed(1, 0);
       bowielights.setLight(99, MIN_BRIGHTNESS);
+      delay(100);
     }
 
     // if it reaches here, then we know we can reset this flag
@@ -491,23 +515,25 @@ void MegaBowieShoreline::joystickDriveControl(Msg m) {
       if(packets[i].cmd == 'L') { // left motor
         if(packets[i].val > 255) packets[i].key = 99; // something weird here, set key to skip
         if(packets[i].key == 1) { // fwd
-          if(packets[i].val > MIN_BRIGHTNESS) {
-            bowielights.setLight(0, packets[i].val);  
-          } else {
-            bowielights.setLight(0, MIN_BRIGHTNESS);
-          }
-          bowielights.setLight(2, MIN_BRIGHTNESS);
-          //leftBork();
-          bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_FWD);
-          bowiedrive.motor_setSpeed(0, packets[i].val);
-        } else if(packets[i].key == 0) { // bwd
+          
           bowielights.setLight(0, MIN_BRIGHTNESS);
           if(packets[i].val > MIN_BRIGHTNESS) {
             bowielights.setLight(2, packets[i].val);  
           } else {
             bowielights.setLight(2, MIN_BRIGHTNESS);
           }
-          //leftBork();
+          
+          bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_FWD);
+          bowiedrive.motor_setSpeed(0, packets[i].val);
+        } else if(packets[i].key == 0) { // bwd
+          
+          bowielights.setLight(2, MIN_BRIGHTNESS);
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(0, packets[i].val);  
+          } else {
+            bowielights.setLight(0, MIN_BRIGHTNESS);
+          }
+          
           bowiedrive.motor_setDir(0, bowiedrive.MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(0, packets[i].val);
         }
@@ -516,24 +542,25 @@ void MegaBowieShoreline::joystickDriveControl(Msg m) {
       if(packets[i].cmd == 'R') { // right motor
         if(packets[i].val > 255) packets[i].key = 99; // something weird here, set key to skip
         if(packets[i].key == 1) { // fwd
-          if(packets[i].val > MIN_BRIGHTNESS) {
-            bowielights.setLight(1, packets[i].val);  
-          } else {
-            bowielights.setLight(1, MIN_BRIGHTNESS);
-          }
-          bowielights.setLight(1, packets[i].val);
-          bowielights.setLight(3, MIN_BRIGHTNESS);
-          //leftBork();
-          bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
-          bowiedrive.motor_setSpeed(1, packets[i].val);
-        } else if(packets[i].key == 0) { // bwd
+          
+          bowielights.setLight(1, MIN_BRIGHTNESS);
           if(packets[i].val > MIN_BRIGHTNESS) {
             bowielights.setLight(3, packets[i].val);  
           } else {
             bowielights.setLight(3, MIN_BRIGHTNESS);
           }
-          bowielights.setLight(1, MIN_BRIGHTNESS);
-          //leftBork();
+          
+          bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_FWD);
+          bowiedrive.motor_setSpeed(1, packets[i].val);
+        } else if(packets[i].key == 0) { // bwd
+          
+          bowielights.setLight(3, MIN_BRIGHTNESS);
+          if(packets[i].val > MIN_BRIGHTNESS) {
+            bowielights.setLight(1, packets[i].val);  
+          } else {
+            bowielights.setLight(1, MIN_BRIGHTNESS);
+          }
+          
           bowiedrive.motor_setDir(1, bowiedrive.MOTOR_DIR_REV);
           bowiedrive.motor_setSpeed(1, packets[i].val);
         }
@@ -1274,24 +1301,27 @@ void MegaBowieShoreline::scoopSequence(int frame_delay) {
 void MegaBowieShoreline::emptyScoop() {
 
   uint16_t prev_arm_pos = bowiearm.getArmPos();
+  uint16_t prev_end_pos = bowiescoop.getEndPos();
 
   int endPos;
   int armPos;
 
   uint16_t arm_to_dump_pos = ARM_MAX+100;
+  uint16_t end_tilted_up_pos = prev_end_pos-400;
 
   if(bowiehopper.getLidParked()) bowiehopper.unparkLid();
 
   // tilt scoop up a bit
-  for(int i=END_HOME; i<END_HOME+300; i+=2) {
+  for(int i=prev_end_pos; i<end_tilted_up_pos; i+=2) {
     bowiescoop.scoop.writeMicroseconds(i);
     bowiescoop.setEndPos(i);
+    delay(2);
     servoInterrupt(SERVO_END_KEY, i);
   }
-  bowiescoop.scoop.writeMicroseconds(END_HOME+300);
-  bowiescoop.setEndPos((END_HOME+300));
+  bowiescoop.scoop.writeMicroseconds(end_tilted_up_pos);
+  bowiescoop.setEndPos(end_tilted_up_pos);
   endPos = bowiescoop.getEndPos(); // setting this here to avoid errors (weird but true)
-  servoInterrupt(SERVO_END_KEY, END_HOME+300);
+  servoInterrupt(SERVO_END_KEY, end_tilted_up_pos);
 
   // raise the arm while keeping scoop parallel to ground
   if(BOT_DEBUG_MEGA) Serial << "Going to ARM_MAX..." << endl;
@@ -1299,7 +1329,7 @@ void MegaBowieShoreline::emptyScoop() {
     bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
     bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
     bowiearm.setArmPos(i);
-    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, (END_HOME+300), END_PARALLEL_TOP);
+    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, end_tilted_up_pos, END_PARALLEL_TOP);
     bowiescoop.scoop.writeMicroseconds(endPos);
     bowiescoop.setEndPos(endPos);
     delay(3); 
@@ -1309,7 +1339,8 @@ void MegaBowieShoreline::emptyScoop() {
   bowiearm.arm.writeMicroseconds(ARM_MAX + bowiearm.SERVO_OFFSET);
   bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - ARM_MAX + SERVO_MIN_US);
   bowiearm.setArmPos(ARM_MAX);
-  bowiescoop.scoop.writeMicroseconds(END_PARALLEL_TOP);
+  endPos = END_PARALLEL_TOP;
+  bowiescoop.scoop.writeMicroseconds(endPos);
   bowiescoop.setEndPos(endPos);
   delay(3);
   servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
@@ -1346,13 +1377,12 @@ void MegaBowieShoreline::emptyScoop() {
   bowiescoop.moveEnd(END_MIN, 3, 2);
   Serial << "a1" << endl;
   for(int i=0; i<4; i++) {
-    bowiescoop.moveEnd(END_MIN-100, 3, 1);
-    delay(100);
+    bowiescoop.moveEnd(END_MIN-300, 3, 1);
     Serial << "a2" << endl;
-    bowiescoop.moveEnd(END_MIN+100, 3, 1);
-    delay(100);
+    bowiescoop.moveEnd(END_MIN+300, 3, 1);
     Serial << "a3" << endl;
   }
+  bowiescoop.moveEnd(END_HOME, 3, 1);
 
   // lower the arm back to the previous position
   if(BOT_DEBUG_MEGA) Serial << "Going to prev_arm_pos..." << endl;
@@ -1360,7 +1390,7 @@ void MegaBowieShoreline::emptyScoop() {
     bowiearm.arm.writeMicroseconds(i + bowiearm.SERVO_OFFSET);
     bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - i + SERVO_MIN_US);
     bowiearm.setArmPos(i);
-    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, END_HOME, END_PARALLEL_TOP);
+    endPos = clawParallelValBounds(i, prev_arm_pos, ARM_MAX, prev_end_pos, END_HOME);
     bowiescoop.scoop.writeMicroseconds(endPos);
     bowiescoop.setEndPos(endPos);
     delay(3); 
@@ -1370,14 +1400,15 @@ void MegaBowieShoreline::emptyScoop() {
   bowiearm.arm.writeMicroseconds(prev_arm_pos + bowiearm.SERVO_OFFSET);
   bowiearm.arm2.writeMicroseconds(SERVO_MAX_US - prev_arm_pos + SERVO_MIN_US);
   bowiearm.setArmPos(prev_arm_pos);
-  bowiescoop.scoop.writeMicroseconds(END_HOME);
+  endPos = prev_end_pos;
+  bowiescoop.scoop.writeMicroseconds(endPos);
   bowiescoop.setEndPos(endPos);
   delay(3);
   servoInterrupt(SERVO_ARM_AND_END_KEY, armPos);
 
   // close lid
-  if(BOT_DEBUG_MEGA) Serial << "Going to LID_MAX..." << endl;
   delay(100);
+  if(BOT_DEBUG_MEGA) Serial << "Going to LID_MAX..." << endl;
   bowiehopper.moveLid(LID_MAX, 2, 1);
 
 }

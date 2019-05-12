@@ -205,6 +205,7 @@ class MegaBowieShoreline {
     MegaBowieShoreline();
     void setRobotID(uint8_t the_robot_id);
     void begin();
+    void setStates();
     uint8_t ROBOT_ID;
 
     // Callbacks
@@ -244,6 +245,8 @@ class MegaBowieShoreline {
     void disableSimpleMessageForwarding();
     void enableMessageForwarding();
     void disableMessageForwarding();
+    void enableTransparentMode();
+    void disableTransparentMode();
 
     // Movements
     void scoopSequence(int frame_delay);
@@ -252,6 +255,9 @@ class MegaBowieShoreline {
     void moveArmAndEnd(int armPos, int step, int del, int armMin, int armMax, int endMin, int endMax);
     int clawParallelVal(int arm_Val);
     int clawParallelValBounds(int arm_Val, int armMin, int armMax, int endMin, int endMax);
+
+    // Specific
+    void buzz(long frequency, long length);
 
   private:
 
@@ -266,6 +272,7 @@ class MegaBowieShoreline {
     bool DEFAULT_ACTIONS; // true by default
     bool MESSAGE_FORWARDING; // false by default
     bool SIMPLE_MESSAGE_FORWARDING; // true by default
+    bool XBEE_TRANSPARENT; // false by default
 
     // Other
     uint8_t unlikely_count;
@@ -315,9 +322,6 @@ class MegaBowieShoreline {
 
     // Update logging sensors
     void updateLogSensorData();
-
-    // Specific
-    void buzz(long frequency, long length);
 
     // Arm Control
     long last_arm_control_cmd;
